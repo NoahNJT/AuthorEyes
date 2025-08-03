@@ -1,5 +1,5 @@
 import PySimpleGUI as sg 
-from PIL import Image, ImageTk
+from PIL import Image
 import json
 import io
 
@@ -14,37 +14,59 @@ def get_img_data(f, maxsize=(75, 75)):
     img.save(bio, format="PNG")
     return bio.getvalue()
 
-main_layout = [[sg.Input("Story Title", key = "-TITLE-")], 
+home_layout = [[sg.Input("Story Title", key = "-TITLE-")], 
                [sg.Input("Author", key = "-AUTHOR-")], 
                [sg.Input("Enter file name (json only) here to save to or load from!", key = "-FILENAME-")], 
                [sg.Button("Save All", key = "-SAVE-"), sg.Button("Load", key = "-LOAD-")]]
-
-character_list = ["Thellon", "Aila", "Root", "Lita"]
 
 g_elem_list = []
 m_elem_list = []
 t_elem_list = []
 
 #=================================== CHAPTER PLANNER TAB ===============================
-cp_tab_layout = [[sg.OptionMenu(character_list), 
-                  sg.Input("Chapter Title", size = (113, None))], 
-                 [sg.Multiline(size = (125, 15))]]
+vis = 1
+chapters = 1
 
-chapter_tab = [[sg.TabGroup([[sg.Tab("Chapter 1", cp_tab_layout, key="-tabs-")]])], 
-               [sg.Button("Add Chapter")], 
-               [sg.Button("Remove Chapter")]]
+chapt_col = [[sg.pin(sg.Col(layout = [[sg.Input("Ch #", size = (5, None), key = ("-CHNUM-", chapters)), 
+              sg.Input("Narrator/POV Character", size = (30, None), key = ("-POV-", chapters)), 
+              sg.Input("Chapter Title", expand_x = True, key = ("-CHT-", chapters))], 
+             [sg.Multiline(size = (125, 15), expand_x = True, key = ("-CHMUL-", chapters))]], key = ("-ROW-", chapters)))]]
+
+chapter_tab = [[sg.Col(chapt_col, key = "-CHAPTERCOL-", expand_x = True, expand_y = True, scrollable = True)],
+               [sg.Button("Add Chapter", key = "-ADD-"), sg.Button("Remove Chapter", key = "-DEL-"), sg.Text("Can restore removed contents with 'Add Chapter' until next load of file")]]
 #========================================================================================
 
-#==================================== CHARACTER MAP TAB =================================
-# TRY TO IMPLEMENT PILLOW: for images; can maybe see if there is a way of doing graph for the character map
-# Maybe could do classes with characters where main characters are at the top of the tree and have preset connection points?
-# Could color code lines instead of it being labeled; could do a circle of characters and keep position information for lines
-# Make each character a box with their name and (optionally) a picture (use default person if not)
-character_frame_layout = [[sg.OptionMenu(character_list),
-                           sg.OptionMenu(character_list),
-                           sg.Input(), 
-                           sg.ColorChooserButton("Select Color")]]
+#==================================== PLOT DIAGRAM TAB ===================================
+col = [[sg.Text('Choose what clicking/dragging does:', enable_events=True)],
+       [sg.Radio('Draw Line', 1, key='-LINE-', enable_events=True)],
+       [sg.Radio('Erase Item', 1, key='-ERASE-', enable_events=True)],
+       [sg.Radio('Erase All (INCLUDES DIAGRAM!)', 1, key='-CLEAR-', enable_events=True)],
+       [sg.Radio('Move Item', 1, True, key='-MOVE-', enable_events=True)],
+       [sg.Text("-------------------------------------------------------\nInsert Plot Points:")],
+       [sg.Multiline("Write a plot point here!\nType enter when going to new line\nfor multiple lines when adding", key="-POINTSTRING-", size = (30, 10))],
+       [sg.Button("Add Plot Point", key="-PLOTPOINT-")]]
 
+plot_tab = [[sg.Graph((720, 400),(0, 0),(720, 400), background_color="white", key = "-DIAGRAM-", change_submits=True, drag_submits=True, expand_x = True, expand_y = True), 
+             sg.Col(col, justification = 'right')]]
+#=========================================================================================
+
+#==================================== TIMELINE TAB =====================================
+t_col = [[sg.Text('Choose what clicking/dragging does:', enable_events=True)],
+         [sg.Radio('Draw Line', 1, key='-LINE1-', enable_events=True)],
+         [sg.Radio('Erase Item', 1, key='-ERASE1-', enable_events=True)],
+         [sg.Radio('Erase All (INCLUDES DIAGRAM!)', 1, key='-CLEAR1-', enable_events=True)],
+         [sg.Radio('Move Item', 1, True, key='-MOVE1-', enable_events=True)],
+         [sg.Text("-------------------------------------------------------\nInsert Events:")],
+         [sg.Multiline("Write timeline event here!\nType enter when going to new line\nfor multiple lines when adding", key="-TIMESTRING-", size = (30, 10))],
+         [sg.Button("Add Event", key="-TIMEPOINT-")]]
+
+t_g_col = []
+
+time_tab = [[sg.Graph((720, 400),(0, 0),(720, 400), background_color="white", key = "-TIMELINE-", change_submits=True, drag_submits=True, expand_x = True, expand_y = True),
+             sg.Col(t_col, justification = 'right')]]
+#=========================================================================================
+
+#==================================== CHARACTER MAP TAB =================================
 char_col = [[sg.Text("Choose what clicking/dragging does:", enable_events=True)],
             [sg.Radio("Draw Line", 1, key='-LINE2-', enable_events=True), 
              sg.Input("#000000", size = (7, None), key = "-LINECOL-"),
@@ -55,64 +77,61 @@ char_col = [[sg.Text("Choose what clicking/dragging does:", enable_events=True)]
             [sg.Text("-------------------------------------------------------\nInsert Character Images and Items:")],
             [sg.Input("Image Filepath", key = "-IMAGEPATH-", size = (20, None)), sg.FileBrowse()],
             [sg.Button("Add Character Image", key = "-CHARIMAGE-", size = (25, None))],
-            [sg.Multiline("Write names, relationships, etc.", key = "-CHARTEXT-")],
+            [sg.Multiline("Write names, relationships, etc.\nType enter when going to new line\nfor multiple lines when adding", key = "-CHARTEXT-", size = (30, 10))],
             [sg.Button("Add Text", key = "-CHARTEXTBUTTON-", size = (25, None))]]
 
-character_tab = [[sg.Graph((720, 400),(0, 0),(720, 400), background_color="white", key = "-CHARMAP-", change_submits=True, drag_submits=True), sg.Col(char_col)]]
-#=========================================================================================
-
-#==================================== PLOT DIAGRAM TAB ===================================
-col = [[sg.Text('Choose what clicking/dragging does:', enable_events=True)],
-       [sg.Radio('Draw Line', 1, key='-LINE-', enable_events=True)],
-       [sg.Radio('Erase Item', 1, key='-ERASE-', enable_events=True)],
-       [sg.Radio('Erase All (INCLUDES DIAGRAM!)', 1, key='-CLEAR-', enable_events=True)],
-       [sg.Radio('Move Item', 1, True, key='-MOVE-', enable_events=True)],
-       [sg.Text("-------------------------------------------------------\nInsert Plot Points:")],
-       [sg.Multiline("Write a plot point here!",size = (None, 10), key="-POINTSTRING-")],
-       [sg.Button("Add Plot Point", key="-PLOTPOINT-")]]
-
-plot_tab = [[sg.Graph((720, 400),(0, 0),(720, 400), background_color="white", key = "-DIAGRAM-", change_submits=True, drag_submits=True), sg.Col(col)]]
+character_tab = [[sg.Graph((720, 400),(0, 0),(720, 400), background_color="white", key = "-CHARMAP-", change_submits=True, drag_submits=True, expand_x = True, expand_y = True), 
+                  sg.Col(char_col, justification = 'right')]]
 #=========================================================================================
 
 #======================================= CREATE WINDOW ==========================================================
-layout = [[sg.TabGroup([[sg.Tab("Home", main_layout)], 
-          [sg.Tab("Chapter Planner", chapter_tab)], 
-          [sg.Tab("Character Map", character_tab)], 
-          [sg.Tab("Plot Diagram", plot_tab)]])]]
+layout = [[sg.TabGroup([[sg.Tab("Home", home_layout, expand_x = True, expand_y = True)], 
+          [sg.Tab("Chapter Planner", chapter_tab, expand_x = True, expand_y = True)], 
+          [sg.Tab("Plot Diagram", plot_tab, expand_x = True, expand_y = True)],
+          [sg.Tab("Timeline", time_tab, expand_x = True, expand_y = True)],
+          [sg.Tab("Character Map", character_tab, expand_x = True, expand_y = True)]], expand_x = True, expand_y = True)]]
 
-window = sg.Window("AuthorEyes", layout, size=(1000,500))
+window = sg.Window("AuthorEyes", layout, resizable = True)
 window.finalize()
 #=================================================================================================================
 
 #======================================= INITIALIZE PLOT DIAGRAM =================================================
-id = window["-DIAGRAM-"].draw_text("Exposition", (100, 110), font = ('Arial', 8))
-g_elem_list.append({'id': id, 'type': 'text', 'text': "Exposition", 'point': (100, 110), 'font': ('Arial', 8)})
-id = window["-DIAGRAM-"].draw_text("Rising Action", (260, 240), font = ('Arial', 8))
-g_elem_list.append({'id': id, 'type': 'text', 'text': "Rising Action", 'point': (260, 240), 'font': ('Arial', 8)})
-id = window["-DIAGRAM-"].draw_text("Climax", (420, 360), font = ('Arial', 8))
-g_elem_list.append({'id': id, 'type': 'text', 'text': "Climax", 'point': (420, 360), 'font': ('Arial', 8)})
-id = window["-DIAGRAM-"].draw_text("Falling Action", (530, 290), font = ('Arial', 8))
-g_elem_list.append({'id': id, 'type': 'text', 'text': "Falling Action", 'point': (530, 290), 'font': ('Arial', 8)})
-id = window["-DIAGRAM-"].draw_text("Resolution", (625, 230), font = ('Arial', 8))
-g_elem_list.append({'id': id, 'type': 'text', 'text': "Resolution", 'point': (625, 230), 'font': ('Arial', 8)})
-id = window["-DIAGRAM-"].draw_line((30, 100), (170, 100), width = 2)
-g_elem_list.append({'id': id, 'type': 'line', 'point1': (30, 100), 'point2': (170, 100), 'width': 2})
-id = window["-DIAGRAM-"].draw_line((170, 100), (420, 350), width = 2)
-g_elem_list.append({'id': id, 'type': 'line', 'point1': (170, 100), 'point2': (420, 350), 'width': 2})
-id = window["-DIAGRAM-"].draw_line((420, 350), (550, 220), width = 2)
-g_elem_list.append({'id': id, 'type': 'line', 'point1': (420, 350), 'point2': (550, 220), 'width': 2})
-id = window["-DIAGRAM-"].draw_line((550, 220), (700, 220), width = 2)
-g_elem_list.append({'id': id, 'type': 'line', 'point1': (550, 220), 'point2': (700, 220), 'width': 2})
+id = window["-DIAGRAM-"].draw_text("Exposition", (100, 60), font = ('Arial', 8))
+g_elem_list.append({'id': id, 'type': 'text', 'text': "Exposition", 'point': (100, 60), 'font': ('Arial', 8)})
+id = window["-DIAGRAM-"].draw_text("Rising Action", (260, 190), font = ('Arial', 8))
+g_elem_list.append({'id': id, 'type': 'text', 'text': "Rising Action", 'point': (260, 190), 'font': ('Arial', 8)})
+id = window["-DIAGRAM-"].draw_text("Climax", (420, 310), font = ('Arial', 8))
+g_elem_list.append({'id': id, 'type': 'text', 'text': "Climax", 'point': (420, 310), 'font': ('Arial', 8)})
+id = window["-DIAGRAM-"].draw_text("Falling Action", (530, 240), font = ('Arial', 8))
+g_elem_list.append({'id': id, 'type': 'text', 'text': "Falling Action", 'point': (530, 240), 'font': ('Arial', 8)})
+id = window["-DIAGRAM-"].draw_text("Resolution", (625, 180), font = ('Arial', 8))
+g_elem_list.append({'id': id, 'type': 'text', 'text': "Resolution", 'point': (625, 180), 'font': ('Arial', 8)})
+id = window["-DIAGRAM-"].draw_line((30, 50), (170, 50), width = 2)
+g_elem_list.append({'id': id, 'type': 'line', 'point1': (30, 50), 'point2': (170, 50), 'width': 2})
+id = window["-DIAGRAM-"].draw_line((170, 50), (420, 300), width = 2)
+g_elem_list.append({'id': id, 'type': 'line', 'point1': (170, 50), 'point2': (420, 300), 'width': 2})
+id = window["-DIAGRAM-"].draw_line((420, 300), (550, 170), width = 2)
+g_elem_list.append({'id': id, 'type': 'line', 'point1': (420, 300), 'point2': (550, 170), 'width': 2})
+id = window["-DIAGRAM-"].draw_line((550, 170), (700, 170), width = 2)
+g_elem_list.append({'id': id, 'type': 'line', 'point1': (550, 170), 'point2': (700, 170), 'width': 2})
 #==================================================================================================================
+
+#======================================== INITIALIZE TIMELINE =====================================================
+id = window["-TIMELINE-"].draw_line((30, 175), (700, 175), width = 2)
+t_elem_list.append({'id': id, 'type': 'line', 'point1': (30, 175), 'point2': (700, 175), 'width': 2})
+id = window["-TIMELINE-"].draw_line((30, 155), (30, 195), width = 2)
+t_elem_list.append({'id': id, 'type': 'line', 'point1': (30, 175), 'point2': (700, 175), 'width': 2})
+id = window["-TIMELINE-"].draw_line((700, 155), (700, 195), width = 2)
+t_elem_list.append({'id': id, 'type': 'line', 'point1': (30, 175), 'point2': (700, 175), 'width': 2})
 
 l_draw = False
 l_draw_map = False
+l_draw_time = False
 dragging = False
 graph = window["-DIAGRAM-"]
 map_graph = window["-CHARMAP-"]
+t_graph = window["-TIMELINE-"]
 start_point = end_point = prior_rect = None
-
-chapter = 0
 
 while True:
     event, values = window.read()
@@ -128,9 +147,27 @@ while True:
             window["-AUTHOR-"].update(load_data[0][1])
             window["-FILENAME-"].update(load_data[0][2])
 
+            window[("-CHNUM-", 1)].update(load_data[1][1]['chnum'])
+            window[("-POV-", 1)].update(load_data[1][1]['pov'])
+            window[("-CHT-", 1)].update(load_data[1][1]['cht'])
+            window[("-CHMUL-", 1)].update(load_data[1][1]['ch'])
+            for ch in range(2, load_data[1][0] + 1):
+                vis += 1
+                chapters += 1
+                window.extend_layout(window["-CHAPTERCOL-"], [[sg.pin(sg.Col(layout = [[sg.Input("Ch #", size = (5, None), key = ("-CHNUM-", chapters)), 
+                sg.Input("Narrator/POV Character", size = (30, None), key = ("-POV-", chapters)), 
+                sg.Input("Chapter Title", expand_x = True, key = ("-CHT-", chapters))], 
+                [sg.Multiline(size = (125, 15), expand_x = True, key = ("-CHMUL-", chapters))]], key = ("-ROW-", chapters)))]])
+                window.refresh()
+                window["-CHAPTERCOL-"].contents_changed()
+                window[("-CHNUM-", ch)].update(load_data[1][1]['chnum'])
+                window[("-POV-", ch)].update(load_data[1][1]['pov'])
+                window[("-CHT-", ch)].update(load_data[1][1]['cht'])
+                window[("-CHMUL-", ch)].update(load_data[1][1]['ch'])
+
             graph.erase()
             g_elem_list.clear()
-            for elem in load_data[1]:
+            for elem in load_data[2]:
                 if elem['type'] == 'text':
                     id = graph.draw_text(elem['text'], elem['point'], font = elem['font'])
                     g_elem_list.append({'id': id, 'type': 'text', 'text': elem['text'], 'point': elem['point'], 'font': elem['font']})
@@ -138,9 +175,19 @@ while True:
                     id = graph.draw_line(elem['point1'], elem['point2'], width = elem['width'])
                     g_elem_list.append({'id': id, 'type': 'line', 'point1': elem['point1'], 'point2': elem['point2'], 'width': elem['width']})
 
+            t_graph.erase()
+            t_elem_list.clear()
+            for elem in load_data[3]:
+                if elem['type'] == 'text':
+                    id = t_graph.draw_text(elem['text'], elem['point'], font = elem['font'])
+                    t_elem_list.append({'id': id, 'type': 'text', 'text': elem['text'], 'point': elem['point'], 'font': elem['font']})
+                elif elem['type'] == 'line':
+                    id = t_graph.draw_line(elem['point1'], elem['point2'], width = elem['width'])
+                    t_elem_list.append({'id': id, 'type': 'line', 'point1': elem['point1'], 'point2': elem['point2'], 'width': elem['width']})
+
             map_graph.erase()
             m_elem_list.clear()
-            for elem in load_data[2]:
+            for elem in load_data[4]:
                 if elem['type'] == 'text':
                     id = map_graph.draw_text(elem['text'], elem['point'], font = elem['font'])
                     m_elem_list.append({'id': id, 'type': 'text', 'text': elem['text'], 'point': elem['point'], 'font': elem['font']})
@@ -152,18 +199,49 @@ while True:
                     id = map_graph.draw_image(data = formatted, location = elem['point'])
                     m_elem_list.append({'id': id, 'type': 'image', 'path': elem['path'], 'point': elem['point']})
 
+            
+
     if event == "-SAVE-":
         with open(values["-FILENAME-"], 'w') as f:
-            save_data = [[values["-TITLE-"], values["-AUTHOR-"], values["-FILENAME-"]], g_elem_list, m_elem_list, t_elem_list]
+            chapter_contents = []
+            for chapt in range(1, vis + 1):
+                chapter_contents.append({'ch': chapt, 'chnum': values[("-CHNUM-", chapt)], 
+                                         'pov': values[("-POV-", chapt)], 'cht': values[("-CHT-", chapt)],
+                                         'chmul': values[("-CHMUL-", chapt)]})
+
+            save_data = [[values["-TITLE-"], values["-AUTHOR-"], values["-FILENAME-"]], [vis, chapter_contents], g_elem_list, t_elem_list, m_elem_list]
             json.dump(save_data, f)
     #=====================================================================
 
     #======================= CHAPTER PLANNER EVENTS ======================
-    if event == "Add Chapter":
-        chapter += 1
-        chapter_tab[0][0].add_tab(sg.Tab(f'Chapter {chapter+1}', [[sg.OptionMenu(character_list), 
-                                                                   sg.Input("Chapter Title", size = (113, None))], 
-                                                                  [sg.Multiline(size = (125, 15))]]))
+    if event == "-ADD-":
+        vis += 1
+        chapters += 1
+
+        if vis < chapters:
+            window[('-ROW-', vis)].update(visible = True)
+            window.refresh()
+            window["-CHAPTERCOL-"].contents_changed()
+            chapters -= 1
+        else:
+            window.extend_layout(window["-CHAPTERCOL-"], [[sg.pin(sg.Col(layout = [[sg.Input("Ch #", size = (5, None), key = ("-CHNUM-", chapters)), 
+              sg.Input("Narrator/POV Character", size = (30, None), key = ("-POV-", chapters)), 
+              sg.Input("Chapter Title", expand_x = True, key = ("-CHT-", chapters))], 
+             [sg.Multiline(size = (125, 15), expand_x = True, key = ("-CHMUL-", chapters))]], key = ("-ROW-", chapters)))]])
+            
+            window.refresh()
+            window["-CHAPTERCOL-"].contents_changed()
+
+        print(chapters, vis)
+
+
+    if event == "-DEL-":
+        if vis > 1:
+            window[('-ROW-', vis)].update(visible = False)
+            window.refresh()
+            window["-CHAPTERCOL-"].contents_changed()
+            vis -= 1
+        print(chapters, vis)
     #=====================================================================
 
     #====================== PLOT DIAGRAM EVENTS ==========================
@@ -211,6 +289,10 @@ while True:
         if l_draw_map == True:
             m_elem_list.append({'id': id, 'type': 'line', 'point1': start_point, 'point2': end_point, 'width': 2, 'color': values["-LINECOL-"]})
             l_draw_map = False
+        if l_draw_time == True:
+            t_elem_list.append({'id': id, 'type': 'line', 'point1': start_point, 'point2': end_point, 'width': 2})
+            l_draw_time = False
+
         start_point, end_point = None, None
         dragging = False
         prior_rect = None
@@ -218,6 +300,50 @@ while True:
     if event == "-PLOTPOINT-":
         id = graph.draw_text(values["-POINTSTRING-"], (300, 300), font = ('Arial', 8))
         g_elem_list.append({'id': id, 'type': 'text', 'text': values["-POINTSTRING-"], 'point': (300, 300), 'font': ('Arial', 8)})
+    #=======================================================================
+
+    #====================== TIMELINE EVENTS ==========================
+    if event == "-TIMELINE-":
+        x, y = values["-TIMELINE-"]
+        if not dragging:
+            start_point = (x, y)
+            dragging = True
+            drag_figures = t_graph.get_figures_at_location((x,y))
+            lastxy = x, y
+        else:
+            end_point = (x, y)
+        if prior_rect:
+            t_graph.delete_figure(prior_rect)
+        delta_x, delta_y = x - lastxy[0], y - lastxy[1]
+        lastxy = x,y
+        if None not in (start_point, end_point):
+            if values['-MOVE1-']:
+                for fig in drag_figures:
+                    t_graph.move_figure(fig, delta_x, delta_y)
+                    for elem in t_elem_list:
+                        if elem['id'] == fig:
+                            if elem['type'] == 'text':
+                                elem['point'] = (elem['point'][0] + delta_x, elem['point'][1] + delta_y)
+                            else:
+                                elem['point1'] = (elem['point1'][0] + delta_x, elem['point1'][1] + delta_y)
+                                elem['point2'] = (elem['point2'][0] + delta_x, elem['point2'][1] + delta_y)
+                    t_graph.update()
+            elif values['-LINE1-']:
+                id = prior_rect = t_graph.draw_line(start_point, end_point, width = 2)
+                l_draw_time = True
+            elif values['-ERASE1-']:
+                for figure in drag_figures:
+                    t_graph.delete_figure(figure)
+                    for elem in t_elem_list:
+                        if elem['id'] == figure:
+                            t_elem_list.remove(elem)
+            elif values['-CLEAR1-']:
+                t_graph.erase()
+                t_elem_list.clear()
+
+    if event == "-TIMEPOINT-":
+        id = t_graph.draw_text(values["-TIMESTRING-"], (300, 300), font = ('Arial', 8))
+        t_elem_list.append({'id': id, 'type': 'text', 'text': values["-TIMESTRING-"], 'point': (300, 300), 'font': ('Arial', 8)})
     #=======================================================================
 
     #===================== CHARACTER MAP EVENTS ============================
