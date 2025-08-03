@@ -16,7 +16,7 @@ def get_img_data(f, maxsize=(75, 75)):
 
 main_layout = [[sg.Input("Story Title", key = "-TITLE-")], 
                [sg.Input("Author", key = "-AUTHOR-")], 
-               [sg.Input("Enter file name (.json only) here to save to or load from!", key = "-FILENAME-")], 
+               [sg.Input("Enter file name (json only) here to save to or load from!", key = "-FILENAME-")], 
                [sg.Button("Save All", key = "-SAVE-"), sg.Button("Load", key = "-LOAD-")]]
 
 character_list = ["Thellon", "Aila", "Root", "Lita"]
@@ -45,17 +45,18 @@ character_frame_layout = [[sg.OptionMenu(character_list),
                            sg.Input(), 
                            sg.ColorChooserButton("Select Color")]]
 
-char_col = [[sg.Text('Choose what clicking/dragging does:', enable_events=True)],
-            [sg.Radio('Draw Line', 1, key='-LINE2-', enable_events=True), 
+char_col = [[sg.Text("Choose what clicking/dragging does:", enable_events=True)],
+            [sg.Radio("Draw Line", 1, key='-LINE2-', enable_events=True), 
              sg.Input("#000000", size = (7, None), key = "-LINECOL-"),
              sg.ColorChooserButton(button_text = "Line Color")],
-            [sg.Radio('Erase Item', 1, key='-ERASE2-', enable_events=True)],
-            [sg.Radio('Erase All', 1, key='-CLEAR2-', enable_events=True)],
-            [sg.Radio('Move All Items', 1, key='-MOVEALL2-', enable_events=True)],
-            [sg.Radio('Move Item', 1, True, key='-MOVE2-', enable_events=True)],
-            [sg.Input("Character Name", key="-POINTSTRING2-")],
+            [sg.Radio("Erase Item", 1, key='-ERASE2-', enable_events=True)],
+            [sg.Radio("Erase All", 1, key='-CLEAR2-', enable_events=True)],
+            [sg.Radio("Move Item", 1, True, key='-MOVE2-', enable_events=True)],
+            [sg.Text("-------------------------------------------------------\nInsert Character Images and Items:")],
             [sg.Input("Image Filepath", key = "-IMAGEPATH-", size = (20, None)), sg.FileBrowse()],
-            [sg.Button("Add Character", key = "-CHARIMAGE-", size = (25, None))]]
+            [sg.Button("Add Character Image", key = "-CHARIMAGE-", size = (25, None))],
+            [sg.Multiline("Write names, relationships, etc.", key = "-CHARTEXT-")],
+            [sg.Button("Add Text", key = "-CHARTEXTBUTTON-", size = (25, None))]]
 
 character_tab = [[sg.Graph((720, 400),(0, 0),(720, 400), background_color="white", key = "-CHARMAP-", change_submits=True, drag_submits=True), sg.Col(char_col)]]
 #=========================================================================================
@@ -66,6 +67,7 @@ col = [[sg.Text('Choose what clicking/dragging does:', enable_events=True)],
        [sg.Radio('Erase Item', 1, key='-ERASE-', enable_events=True)],
        [sg.Radio('Erase All (INCLUDES DIAGRAM!)', 1, key='-CLEAR-', enable_events=True)],
        [sg.Radio('Move Item', 1, True, key='-MOVE-', enable_events=True)],
+       [sg.Text("-------------------------------------------------------\nInsert Plot Points:")],
        [sg.Multiline("Write a plot point here!",size = (None, 10), key="-POINTSTRING-")],
        [sg.Button("Add Plot Point", key="-PLOTPOINT-")]]
 
@@ -104,6 +106,7 @@ g_elem_list.append({'id': id, 'type': 'line', 'point1': (550, 220), 'point2': (7
 #==================================================================================================================
 
 l_draw = False
+l_draw_map = False
 dragging = False
 graph = window["-DIAGRAM-"]
 map_graph = window["-CHARMAP-"]
@@ -117,6 +120,7 @@ while True:
     if event == sg.WIN_CLOSED:
         break
 
+    #====================== HOME PAGE EVENTS ===========================
     if event == "-LOAD-":
         with open(values["-FILENAME-"], 'r') as f:
             load_data = json.load(f)
@@ -125,32 +129,44 @@ while True:
             window["-FILENAME-"].update(load_data[0][2])
 
             graph.erase()
-            g_elem_list = []
+            g_elem_list.clear()
             for elem in load_data[1]:
                 if elem['type'] == 'text':
                     id = graph.draw_text(elem['text'], elem['point'], font = elem['font'])
                     g_elem_list.append({'id': id, 'type': 'text', 'text': elem['text'], 'point': elem['point'], 'font': elem['font']})
-                else:
+                elif elem['type'] == 'line':
                     id = graph.draw_line(elem['point1'], elem['point2'], width = elem['width'])
                     g_elem_list.append({'id': id, 'type': 'line', 'point1': elem['point1'], 'point2': elem['point2'], 'width': elem['width']})
 
+            map_graph.erase()
+            m_elem_list.clear()
+            for elem in load_data[2]:
+                if elem['type'] == 'text':
+                    id = map_graph.draw_text(elem['text'], elem['point'], font = elem['font'])
+                    m_elem_list.append({'id': id, 'type': 'text', 'text': elem['text'], 'point': elem['point'], 'font': elem['font']})
+                elif elem['type'] == 'line':
+                    id = map_graph.draw_line(elem['point1'], elem['point2'], width = elem['width'], color = elem['color'])
+                    m_elem_list.append({'id': id, 'type': 'line', 'point1': elem['point1'], 'point2': elem['point2'], 'width': elem['width'], 'color': elem['color']})
+                elif elem['type'] == 'image':
+                    formatted = get_img_data(elem['path'])
+                    id = map_graph.draw_image(data = formatted, location = elem['point'])
+                    m_elem_list.append({'id': id, 'type': 'image', 'path': elem['path'], 'point': elem['point']})
 
     if event == "-SAVE-":
         with open(values["-FILENAME-"], 'w') as f:
-            save_data = [[values["-TITLE-"], values["-AUTHOR-"], values["-FILENAME-"]], g_elem_list]
+            save_data = [[values["-TITLE-"], values["-AUTHOR-"], values["-FILENAME-"]], g_elem_list, m_elem_list, t_elem_list]
             json.dump(save_data, f)
+    #=====================================================================
 
+    #======================= CHAPTER PLANNER EVENTS ======================
     if event == "Add Chapter":
         chapter += 1
         chapter_tab[0][0].add_tab(sg.Tab(f'Chapter {chapter+1}', [[sg.OptionMenu(character_list), 
                                                                    sg.Input("Chapter Title", size = (113, None))], 
                                                                   [sg.Multiline(size = (125, 15))]]))
+    #=====================================================================
 
-    if event in ('-MOVE-'):
-        graph.Widget.config(cursor='fleur')
-    elif not event.startswith('-DIAGRAM-'):
-        graph.Widget.config(cursor='left_ptr')
-
+    #====================== PLOT DIAGRAM EVENTS ==========================
     if event == "-DIAGRAM-":
         x, y = values["-DIAGRAM-"]
         if not dragging:
@@ -171,7 +187,7 @@ while True:
                     for elem in g_elem_list:
                         if elem['id'] == fig:
                             if elem['type'] == 'text':
-                                elem['point'] = (x, y)
+                                elem['point'] = (elem['point'][0] + delta_x, elem['point'][1] + delta_y)
                             else:
                                 elem['point1'] = (elem['point1'][0] + delta_x, elem['point1'][1] + delta_y)
                                 elem['point2'] = (elem['point2'][0] + delta_x, elem['point2'][1] + delta_y)
@@ -192,6 +208,9 @@ while True:
         if l_draw == True:
             g_elem_list.append({'id': id, 'type': 'line', 'point1': start_point, 'point2': end_point, 'width': 2})
             l_draw = False
+        if l_draw_map == True:
+            m_elem_list.append({'id': id, 'type': 'line', 'point1': start_point, 'point2': end_point, 'width': 2, 'color': values["-LINECOL-"]})
+            l_draw_map = False
         start_point, end_point = None, None
         dragging = False
         prior_rect = None
@@ -199,8 +218,9 @@ while True:
     if event == "-PLOTPOINT-":
         id = graph.draw_text(values["-POINTSTRING-"], (300, 300), font = ('Arial', 8))
         g_elem_list.append({'id': id, 'type': 'text', 'text': values["-POINTSTRING-"], 'point': (300, 300), 'font': ('Arial', 8)})
+    #=======================================================================
 
-
+    #===================== CHARACTER MAP EVENTS ============================
     if event == "-CHARMAP-":
         x, y = values["-CHARMAP-"]
         if not dragging:
@@ -218,23 +238,35 @@ while True:
             if values['-MOVE2-']:
                 for fig in drag_figures:
                     map_graph.move_figure(fig, delta_x, delta_y)
+                    for elem in m_elem_list:
+                        if elem['id'] == fig:
+                            if elem['type'] == 'text' or elem['type'] == 'image':
+                                elem['point'] = (elem['point'][0] + delta_x, elem['point'][1] + delta_y)
+                            else:
+                                elem['point1'] = (elem['point1'][0] + delta_x, elem['point1'][1] + delta_y)
+                                elem['point2'] = (elem['point2'][0] + delta_x, elem['point2'][1] + delta_y)
                     map_graph.update()
             elif values['-LINE2-']:
-                prior_rect = map_graph.draw_line(start_point, end_point, width = 2, color = values["-LINECOL-"])
+                id = prior_rect = map_graph.draw_line(start_point, end_point, width = 2, color = values["-LINECOL-"])
+                l_draw_map = True
             elif values['-ERASE2-']:
                 for figure in drag_figures:
                     map_graph.delete_figure(figure)
+                    for elem in m_elem_list:
+                        if elem['id'] == figure:
+                            m_elem_list.remove(elem)
             elif values['-CLEAR2-']:
                 map_graph.erase()
-            elif values['-MOVEALL2-']:
-                map_graph.move(delta_x, delta_y)
-    elif event.endswith('+UP'):  # The drawing has ended because mouse up
-        start_point, end_point = None, None  # enable grabbing a new rect
-        dragging = False
-        prior_rect = None
+                m_elem_list.clear()
 
     if event == "-CHARIMAGE-":
         formatted = get_img_data(values["-IMAGEPATH-"])
-        map_graph.draw_image(data = formatted, location = (200, 200))
+        id = map_graph.draw_image(data = formatted, location = (200, 200))
+        m_elem_list.append({'id': id, 'type': 'image', 'path': values["-IMAGEPATH-"], 'point': (200, 200)})
+
+    if event == "-CHARTEXTBUTTON-":
+        id = map_graph.draw_text(values["-CHARTEXT-"], (300, 300), font = ('Arial', 8))
+        m_elem_list.append({'id': id, 'type': 'text', 'text': values["-CHARTEXT-"], 'point': (300, 300), 'font': ('Arial', 8)})
+    #==========================================================================
 
 window.close()
