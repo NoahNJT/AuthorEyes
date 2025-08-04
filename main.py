@@ -22,6 +22,7 @@ home_layout = [[sg.Input("Story Title", key = "-TITLE-")],
 g_elem_list = []
 m_elem_list = []
 t_elem_list = []
+chapter_contents = []
 
 #=================================== CHAPTER PLANNER TAB ===============================
 vis = 1
@@ -43,8 +44,9 @@ col = [[sg.Text('Choose what clicking/dragging does:', enable_events=True)],
        [sg.Radio('Erase All (INCLUDES DIAGRAM!)', 1, key='-CLEAR-', enable_events=True)],
        [sg.Radio('Move Item', 1, True, key='-MOVE-', enable_events=True)],
        [sg.Text("-------------------------------------------------------\nInsert Plot Points:")],
-       [sg.Multiline("Write a plot point here!\nType enter when going to new line\nfor multiple lines when adding", key="-POINTSTRING-", size = (30, 10))],
-       [sg.Button("Add Plot Point", key="-PLOTPOINT-")]]
+       [sg.Multiline("Write a plot point here!\nType enter when going to new line\nfor multiple lines when added", key="-POINTSTRING-", size = (30, 10))],
+       [sg.Button("Add Plot Point", key="-PLOTPOINT-")], 
+       [sg.Button("Add to this and Timeline", key = "-P&T-")]]
 
 plot_tab = [[sg.Graph((720, 400),(0, 0),(720, 400), background_color="white", key = "-DIAGRAM-", change_submits=True, drag_submits=True, expand_x = True, expand_y = True), 
              sg.Col(col, justification = 'right')]]
@@ -56,9 +58,11 @@ t_col = [[sg.Text('Choose what clicking/dragging does:', enable_events=True)],
          [sg.Radio('Erase Item', 1, key='-ERASE1-', enable_events=True)],
          [sg.Radio('Erase All (INCLUDES DIAGRAM!)', 1, key='-CLEAR1-', enable_events=True)],
          [sg.Radio('Move Item', 1, True, key='-MOVE1-', enable_events=True)],
+         [sg.Input('0', key = "-DIVIDERS-", size = (3, None)), sg.Button('Add Timeline Dividers', key = "-ADDDIVS-")],
          [sg.Text("-------------------------------------------------------\nInsert Events:")],
-         [sg.Multiline("Write timeline event here!\nType enter when going to new line\nfor multiple lines when adding", key="-TIMESTRING-", size = (30, 10))],
-         [sg.Button("Add Event", key="-TIMEPOINT-")]]
+         [sg.Multiline("Write timeline event here!\nType enter when going to new line\nfor multiple lines when added", key="-TIMESTRING-", size = (30, 10))],
+         [sg.Button("Add Event", key="-TIMEPOINT-")], 
+         [sg.Button("Add to this and Plot Diagram", key = "-T&P-")]]
 
 t_g_col = []
 
@@ -120,9 +124,10 @@ g_elem_list.append({'id': id, 'type': 'line', 'point1': (550, 170), 'point2': (7
 id = window["-TIMELINE-"].draw_line((30, 175), (700, 175), width = 2)
 t_elem_list.append({'id': id, 'type': 'line', 'point1': (30, 175), 'point2': (700, 175), 'width': 2})
 id = window["-TIMELINE-"].draw_line((30, 155), (30, 195), width = 2)
-t_elem_list.append({'id': id, 'type': 'line', 'point1': (30, 175), 'point2': (700, 175), 'width': 2})
+t_elem_list.append({'id': id, 'type': 'line', 'point1': (30, 155), 'point2': (30, 195), 'width': 2})
 id = window["-TIMELINE-"].draw_line((700, 155), (700, 195), width = 2)
-t_elem_list.append({'id': id, 'type': 'line', 'point1': (30, 175), 'point2': (700, 175), 'width': 2})
+t_elem_list.append({'id': id, 'type': 'line', 'point1': (700, 155), 'point2': (700, 195), 'width': 2})
+#==================================================================================================================
 
 l_draw = False
 l_draw_map = False
@@ -147,23 +152,37 @@ while True:
             window["-AUTHOR-"].update(load_data[0][1])
             window["-FILENAME-"].update(load_data[0][2])
 
-            window[("-CHNUM-", 1)].update(load_data[1][1]['chnum'])
-            window[("-POV-", 1)].update(load_data[1][1]['pov'])
-            window[("-CHT-", 1)].update(load_data[1][1]['cht'])
-            window[("-CHMUL-", 1)].update(load_data[1][1]['ch'])
-            for ch in range(2, load_data[1][0] + 1):
-                vis += 1
-                chapters += 1
-                window.extend_layout(window["-CHAPTERCOL-"], [[sg.pin(sg.Col(layout = [[sg.Input("Ch #", size = (5, None), key = ("-CHNUM-", chapters)), 
-                sg.Input("Narrator/POV Character", size = (30, None), key = ("-POV-", chapters)), 
-                sg.Input("Chapter Title", expand_x = True, key = ("-CHT-", chapters))], 
-                [sg.Multiline(size = (125, 15), expand_x = True, key = ("-CHMUL-", chapters))]], key = ("-ROW-", chapters)))]])
+            chapter_contents.clear()
+            while vis > 1:
+                window[('-ROW-', vis)].update(visible = False)
                 window.refresh()
                 window["-CHAPTERCOL-"].contents_changed()
-                window[("-CHNUM-", ch)].update(load_data[1][1]['chnum'])
-                window[("-POV-", ch)].update(load_data[1][1]['pov'])
-                window[("-CHT-", ch)].update(load_data[1][1]['cht'])
-                window[("-CHMUL-", ch)].update(load_data[1][1]['ch'])
+                vis -= 1
+
+
+            window[("-CHNUM-", 1)].update(load_data[1][1][0]['chnum'])
+            window[("-POV-", 1)].update(load_data[1][1][0]['pov'])
+            window[("-CHT-", 1)].update(load_data[1][1][0]['cht'])
+            window[("-CHMUL-", 1)].update(load_data[1][1][0]['chmul'])
+            if load_data[1][0] > 1:
+                for ch in range(2, load_data[1][0] + 1):
+                    if vis < chapters:
+                        window[('-ROW-', ch)].update(visible = True)
+                        window.refresh()
+                        window["-CHAPTERCOL-"].contents_changed()
+                    else:  
+                        chapters += 1
+                        window.extend_layout(window["-CHAPTERCOL-"], [[sg.pin(sg.Col(layout = [[sg.Input("Ch #", size = (5, None), key = ("-CHNUM-", chapters)), 
+                            sg.Input("Narrator/POV Character", size = (30, None), key = ("-POV-", chapters)), 
+                            sg.Input("Chapter Title", expand_x = True, key = ("-CHT-", chapters))], 
+                            [sg.Multiline(size = (125, 15), expand_x = True, key = ("-CHMUL-", chapters))]], key = ("-ROW-", chapters)))]])
+                        window.refresh()
+                        window["-CHAPTERCOL-"].contents_changed()
+                        window[("-CHNUM-", ch)].update(load_data[1][1][ch-1]['chnum'])
+                        window[("-POV-", ch)].update(load_data[1][1][ch-1]['pov'])
+                        window[("-CHT-", ch)].update(load_data[1][1][ch-1]['cht'])
+                        window[("-CHMUL-", ch)].update(load_data[1][1][ch-1]['chmul'])
+                    vis += 1
 
             graph.erase()
             g_elem_list.clear()
@@ -199,11 +218,11 @@ while True:
                     id = map_graph.draw_image(data = formatted, location = elem['point'])
                     m_elem_list.append({'id': id, 'type': 'image', 'path': elem['path'], 'point': elem['point']})
 
-            
+            window.refresh()
 
     if event == "-SAVE-":
         with open(values["-FILENAME-"], 'w') as f:
-            chapter_contents = []
+            chapter_contents.clear()
             for chapt in range(1, vis + 1):
                 chapter_contents.append({'ch': chapt, 'chnum': values[("-CHNUM-", chapt)], 
                                          'pov': values[("-POV-", chapt)], 'cht': values[("-CHT-", chapt)],
@@ -232,16 +251,12 @@ while True:
             window.refresh()
             window["-CHAPTERCOL-"].contents_changed()
 
-        print(chapters, vis)
-
-
     if event == "-DEL-":
         if vis > 1:
             window[('-ROW-', vis)].update(visible = False)
             window.refresh()
             window["-CHAPTERCOL-"].contents_changed()
             vis -= 1
-        print(chapters, vis)
     #=====================================================================
 
     #====================== PLOT DIAGRAM EVENTS ==========================
@@ -300,6 +315,11 @@ while True:
     if event == "-PLOTPOINT-":
         id = graph.draw_text(values["-POINTSTRING-"], (300, 300), font = ('Arial', 8))
         g_elem_list.append({'id': id, 'type': 'text', 'text': values["-POINTSTRING-"], 'point': (300, 300), 'font': ('Arial', 8)})
+    if event == "-P&T-":
+        id = graph.draw_text(values["-POINTSTRING-"], (300, 300), font = ('Arial', 8))
+        g_elem_list.append({'id': id, 'type': 'text', 'text': values["-POINTSTRING-"], 'point': (300, 300), 'font': ('Arial', 8)})
+        id = t_graph.draw_text(values["-POINTSTRING-"], (300, 300), font = ('Arial', 8))
+        t_elem_list.append({'id': id, 'type': 'text', 'text': values["-POINTSTRING-"], 'point': (300, 300), 'font': ('Arial', 8)})
     #=======================================================================
 
     #====================== TIMELINE EVENTS ==========================
@@ -341,7 +361,29 @@ while True:
                 t_graph.erase()
                 t_elem_list.clear()
 
+    if event == "-ADDDIVS-":
+        dividers = values["-DIVIDERS-"]
+        try:
+            dividers = int(dividers)
+        except:
+            pass
+        else:
+            space = 0
+            if dividers > 0:
+                space = 670 // (dividers+1)
+                for divider in range(dividers):
+                    print(space, divider, space*(divider+1)+30)
+                    id = t_graph.draw_line((space*(divider+1) + 30, 165), (space*(divider+1) + 30, 185), width = 2)
+                    t_elem_list.append({'id': id, 'type': 'line', 'point1': (space*(divider+1) + 30, 165), 'point2': (space*(divider+1) + 30, 185), 'width': 2})
+
+
     if event == "-TIMEPOINT-":
+        id = t_graph.draw_text(values["-TIMESTRING-"], (300, 300), font = ('Arial', 8))
+        t_elem_list.append({'id': id, 'type': 'text', 'text': values["-TIMESTRING-"], 'point': (300, 300), 'font': ('Arial', 8)})
+
+    if event == "-T&P-":
+        id = graph.draw_text(values["-TIMESTRING-"], (300, 300), font = ('Arial', 8))
+        g_elem_list.append({'id': id, 'type': 'text', 'text': values["-TIMESTRING-"], 'point': (300, 300), 'font': ('Arial', 8)})
         id = t_graph.draw_text(values["-TIMESTRING-"], (300, 300), font = ('Arial', 8))
         t_elem_list.append({'id': id, 'type': 'text', 'text': values["-TIMESTRING-"], 'point': (300, 300), 'font': ('Arial', 8)})
     #=======================================================================
