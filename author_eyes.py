@@ -207,7 +207,8 @@ def main():
         # CHAPTER PLANNER EVENTS ---------------------------------------------
         # Add chapter
         if event == "-ADD-":
-            vis += 1 # Update number of visible chapters
+            vis += 1 # Update number of visible chapters regardless
+            chapters += 1 # Update number of chapters for comparison (will decrement back if not extended)
 
             # If there are chapters created beyond what is visible, reveal those first
             if vis < chapters:
@@ -216,8 +217,7 @@ def main():
                 window["-CHAPTERCOL-"].contents_changed()
                 chapters -= 1
             # Create new chapter layout if no invisible ones available
-            else:
-                chapters += 1
+            else:   
                 window.extend_layout(window["-CHAPTERCOL-"], [[sg.pin(sg.Col(layout = [[sg.Input("Ch #", size = (5, None), key = ("-CHNUM-", chapters)), 
                 sg.Input("Narrator/POV Character", size = (30, None), key = ("-POV-", chapters)), 
                 sg.Input("Chapter Title", expand_x = True, key = ("-CHT-", chapters))], 
@@ -225,6 +225,8 @@ def main():
                 
                 window.refresh()
                 window["-CHAPTERCOL-"].contents_changed()
+
+            
 
         # Delete chapter (make invisible to user)
         if event == "-DEL-":
